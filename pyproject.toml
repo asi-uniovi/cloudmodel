@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "cloudmodel"
+version = "0.1.0"
+description = "A dataclass model for cloud infrastructure and applications"
+authors = ["Jose Luis Diaz <jldiaz@uniovi.es>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.2.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
