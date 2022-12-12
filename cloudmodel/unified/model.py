@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Tuple
 from ..util import simplified_repr
 from .. import __version__
+from .units import Q, Q_, ComputationUnit, CurrencyPerTimeUnit, RequestsPerTimeUnit, RequestsUnit, StorageUnit, TimeUnit
 
 
 @simplified_repr("name", show_field_names=False)
@@ -32,17 +33,19 @@ class WorkloadSeries:
             as the average number of requests arriving globally at the timeslot
             It can be a tuple with a single element, for a single timeslot
         app:App: application to which the requests are addressed
-        time_unit:str: unit of time for the timeslot (y, h, m , s)
-        timeslot_length:float: duration of the timeslot (1 by default)
+        time_slot_size:float: duration of the timeslot
         intra_slot_distribution:str: name of the distribution for the
            interarrival times of the requests ("exponential" by default)
     """
 
     description: str
-    values: Tuple[float, ...]
-    time_unit: str  # "y", "h", "m", or "s"
-    timeslot_length: float = 1.0
+    values: Tuple[Q[RequestsUnit], ...]
+    time_slot_size: Q[TimeUnit]
     intra_slot_distribution: str = "exponential"
+
+    def __post_init__(self):
+        """Checks dimensions of the time_slot_size are valid."""
+        self.time_slot_size.to("hour")
 
 
 @dataclass(frozen=True)
@@ -52,16 +55,18 @@ class Workload:
     Attributes:
         value:float: average number of requests arriving globally at the timeslot
         app:App: application to which the requests are addressed
-        time_unit:str: unit of time for the timeslot (y, h, m , s)
-        timeslot_length:float: duration of the timeslot (1 by default)
+        time_slot_size: duration of the timeslot
         intra_slot_distribution:str: name of the distribution for the
            interarrival times of the requests ("exponential" by default)
     """
 
-    value: float
-    time_unit: str
-    timeslot_length: float = 1.0
+    value: Q[RequestsUnit]
+    time_slot_size: Q[TimeUnit]
     intra_slot_distribution: str = "exponential"
+
+    def __post_init__(self):
+        """Checks dimensions of the time_slot_size are valid."""
+        self.time_slot_size.to("hour")
 
 
 @dataclass(frozen=True)
@@ -80,7 +85,7 @@ class LimitingSet:
 
     name: str
     max_vms: int = 0
-    max_cores: int = 0
+    max_cores: Q[ComputationUnit] = Q_("0 cores")
 
 
 @simplified_repr("name", "price", "cores", "mem")
@@ -92,7 +97,6 @@ class InstanceClass:
         name:str: name of the instance class, usually built from the name of the VM type
              and the name of the limiting set in which it is deployed.
         price:float: dollar per time unit
-        time_unit:str:  - time unit for the price ("y", "h", "m", or "s").
         cores:float:  millicores available in the VM
         mem:float: GiB available in the VM
         limit:int: maximum number of VMs (0 means "no limit")
@@ -102,21 +106,19 @@ class InstanceClass:
     """
 
     name: str
-    price: float
-    time_unit: str
-    cores: float
-    mem: float
+    price: Q[CurrencyPerTimeUnit]
+    cores: Q[ComputationUnit]
+    mem: Q[StorageUnit]
     limit: int
     limiting_sets: Tuple[LimitingSet]
     is_reserved: bool = False
     is_private: bool = False
 
-    def __post_init__(self) -> None:
-        if self.cores < 0 or self.cores > 1e9 or self.cores != self.cores:  # nan
-            object.__setattr__(
-                self, "cores", 0.0
-            )  # Silently set to zero if the number of millicores is not valid
-            # raise ValueError(f"Wrong number of millicores {self.cores}, must be between 0 and 1E9")
+    def __post_init__(self):
+        """Checks dimensions are valid and store them in the standard units."""
+        object.__setattr__(self, "price", self.price.to("usd/hour"))
+        object.__setattr__(self, "cores", self.cores.to("cores"))
+        object.__setattr__(self, "mem", self.mem.to("gibibytes"))
 
 
 @dataclass(frozen=True)
@@ -132,10 +134,15 @@ class ContainerClass:
     """
 
     name: str
-    cores: float
-    mem: float
+    cores: Q[ComputationUnit]
+    mem: Q[StorageUnit]
     app: App
     limit: int
+
+    def __post_init__(self):
+        """Checks dimensions are valid and store them in the standard units."""
+        object.__setattr__(self, "cores", self.cores.to("millicores"))
+        object.__setattr__(self, "mem", self.mem.to("gibibytes"))
 
 
 @dataclass(frozen=True)
@@ -168,14 +175,23 @@ class System:
         ccs:list[ContainerClass]: List of containers classes (runtime for apps)
         perfs:dict[tuple[InstanceClass, ContainerClass|ProcessClass], float]:
            Performance in requests-per-time-unit for each pair (InstanceClass, ContainerClass)
-        time_unit:str: time unit for the performances (h, m , s)
     """
 
     name: str
     ics: list[InstanceClass]
     ccs: list[ContainerClass]
-    perfs: dict[Tuple[InstanceClass, ContainerClass | ProcessClass | None, App], float]
-    time_unit: str
+    perfs: dict[
+        Tuple[InstanceClass, ContainerClass | ProcessClass | None, App],
+        Q[RequestsPerTimeUnit],
+    ]
+
+    def __post_init__(self):
+        """Checks dimensions are valid and store them in the standard units."""
+        new_perfs = {}
+        for key, value in self.perfs.items():
+            new_perfs[key] = value.to("req/hour")
+
+        object.__setattr__(self, "perfs", new_perfs)
 
 
 @simplified_repr("name", "system", "version")
@@ -185,17 +201,15 @@ class Problem:
 
     Attributes:
         name:str: name of the problem
-        workloads:tuple["Workload", ...]:  Tuple of workloads, one per application.
-        instance_classes:tuple["InstanceClass", ...]: Infrastructure of VMs
-           in which deploy the apps
-        performances:PerformanceSet: Object describing the performance of each
-           instance class for each kind of application.
+        workloads:dict[App, WorkloadSeries]:  Workload for each app
+        sched_time_size:Q["[time]"]:  Size of the scheduling window
         description:str: Optional description for the problem
     """
 
     name: str
     system: System
     workloads: dict[App, WorkloadSeries]
+    sched_time_size: Q[TimeUnit]
     version: str = __version__
 
 
