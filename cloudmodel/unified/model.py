@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Tuple
 from ..util import simplified_repr
 from .. import __version__
-from .units import Q, Q_, ComputationUnit, CurrencyPerTimeUnit, RequestsPerTimeUnit, RequestsUnit, StorageUnit, TimeUnit
+from .units import *
 
 
 @simplified_repr("name", show_field_names=False)
@@ -39,13 +39,13 @@ class WorkloadSeries:
     """
 
     description: str
-    values: Tuple[Q[RequestsUnit], ...]
-    time_slot_size: Q[TimeUnit]
+    values: Tuple[Requests, ...]
+    time_slot_size: Time
     intra_slot_distribution: str = "exponential"
 
-    def __post_init__(self):
-        """Checks dimensions of the time_slot_size are valid."""
-        self.time_slot_size.to("hour")
+    # def __post_init__(self):
+    #     """Checks dimensions of the time_slot_size are valid."""
+    #     self.time_slot_size.to("hour")
 
 
 @dataclass(frozen=True)
@@ -60,13 +60,13 @@ class Workload:
            interarrival times of the requests ("exponential" by default)
     """
 
-    value: Q[RequestsUnit]
-    time_slot_size: Q[TimeUnit]
+    value: Requests
+    time_slot_size: Time
     intra_slot_distribution: str = "exponential"
 
-    def __post_init__(self):
-        """Checks dimensions of the time_slot_size are valid."""
-        self.time_slot_size.to("hour")
+    # def __post_init__(self):
+    #     """Checks dimensions of the time_slot_size are valid."""
+    #     self.time_slot_size.to("hour")
 
 
 @dataclass(frozen=True)
@@ -85,7 +85,7 @@ class LimitingSet:
 
     name: str
     max_vms: int = 0
-    max_cores: Q[ComputationUnit] = Q_("0 cores")
+    max_cores: ComputationalUnits = ComputationalUnits("0 cores")
 
 
 @simplified_repr("name", "price", "cores", "mem")
@@ -106,19 +106,19 @@ class InstanceClass:
     """
 
     name: str
-    price: Q[CurrencyPerTimeUnit]
-    cores: Q[ComputationUnit]
-    mem: Q[StorageUnit]
+    price: CurrencyPerTime
+    cores: ComputationalUnits
+    mem: Storage
     limit: int
     limiting_sets: Tuple[LimitingSet]
     is_reserved: bool = False
     is_private: bool = False
 
-    def __post_init__(self):
-        """Checks dimensions are valid and store them in the standard units."""
-        object.__setattr__(self, "price", self.price.to("usd/hour"))
-        object.__setattr__(self, "cores", self.cores.to("cores"))
-        object.__setattr__(self, "mem", self.mem.to("gibibytes"))
+    # def __post_init__(self):
+    #     """Checks dimensions are valid and store them in the standard units."""
+    #     object.__setattr__(self, "price", self.price.to("usd/hour"))
+    #     object.__setattr__(self, "cores", self.cores.to("cores"))
+    #     object.__setattr__(self, "mem", self.mem.to("gibibytes"))
 
 
 @dataclass(frozen=True)
@@ -134,15 +134,15 @@ class ContainerClass:
     """
 
     name: str
-    cores: Q[ComputationUnit]
-    mem: Q[StorageUnit]
+    cores: ComputationalUnits
+    mem: Storage
     app: App
     limit: int
 
-    def __post_init__(self):
-        """Checks dimensions are valid and store them in the standard units."""
-        object.__setattr__(self, "cores", self.cores.to("millicores"))
-        object.__setattr__(self, "mem", self.mem.to("gibibytes"))
+    # def __post_init__(self):
+    #     """Checks dimensions are valid and store them in the standard units."""
+    #     object.__setattr__(self, "cores", self.cores.to("millicores"))
+    #     object.__setattr__(self, "mem", self.mem.to("gibibytes"))
 
 
 @dataclass(frozen=True)
@@ -182,16 +182,15 @@ class System:
     ccs: list[ContainerClass]
     perfs: dict[
         Tuple[InstanceClass, ContainerClass | ProcessClass | None, App],
-        Q[RequestsPerTimeUnit],
+        RequestsPerTime,
     ]
 
-    def __post_init__(self):
-        """Checks dimensions are valid and store them in the standard units."""
-        new_perfs = {}
-        for key, value in self.perfs.items():
-            new_perfs[key] = value.to("req/hour")
-
-        object.__setattr__(self, "perfs", new_perfs)
+    # def __post_init__(self):
+    #     """Checks dimensions are valid and store them in the standard units."""
+    #     new_perfs = {}
+    #     for key, value in self.perfs.items():
+    #         new_perfs[key] = value.to("req/hour")
+    #     object.__setattr__(self, "perfs", new_perfs)
 
 
 @simplified_repr("name", "system", "version")
@@ -209,7 +208,7 @@ class Problem:
     name: str
     system: System
     workloads: dict[App, WorkloadSeries]
-    sched_time_size: Q[TimeUnit]
+    sched_time_size: Time
     version: str = __version__
 
 
