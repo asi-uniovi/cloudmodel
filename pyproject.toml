@@ -15,7 +15,16 @@ pytest = "^7.2.0"
 black = "^22.10.0"
 mypy = "^0.991"
 hypothesis = "^6.61.0"
+pytest-cov = "^4.0.0"
 
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+
+[tool.pytest.ini_options]
+markers = [
+    "units: Testing the unit system",
+    "property_testing: Slow tests that use hypothesis",
+    "repr: Testing string representation of class models"
+]

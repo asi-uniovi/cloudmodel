@@ -39,27 +39,27 @@ class CheckedDimensionality(Quantity):
 # New dimension types appropriate for the cloud model
 # -----------------------------------------------------------------------------------
 class Time(CheckedDimensionality, dimensionality="[time]"):
-    def to(self, other=None, *ctx, **ctx_kwargs):
+    def to(self, other=None, *ctx, **ctx_kwargs):  # pragma: no cover
         return cast("Time", super().to(other, *ctx, **ctx_kwargs))
 
 
 class Storage(CheckedDimensionality, dimensionality="[]"):
-    def to(self, other=None, *ctx, **ctx_kwargs):
+    def to(self, other=None, *ctx, **ctx_kwargs):  # pragma: no cover
         return cast("Storage", super().to(other, *ctx, **ctx_kwargs))
 
 
 class RequestsPerTime(CheckedDimensionality, dimensionality="[requests]/[time]"):
-    def to(self, other=None, *ctx, **ctx_kwargs):
+    def to(self, other=None, *ctx, **ctx_kwargs):  # pragma: no cover
         return cast("RequestsPerTime", super().to(other, *ctx, **ctx_kwargs))
 
 
 class CurrencyPerTime(CheckedDimensionality, dimensionality="[currency]/[time]"):
-    def to(self, other=None, *ctx, **ctx_kwargs):
+    def to(self, other=None, *ctx, **ctx_kwargs):  # pragma: no cover
         return cast("CurrencyPerTime", super().to(other, *ctx, **ctx_kwargs))
 
 
 class ComputationalUnits(CheckedDimensionality, dimensionality="[computation]"):
-    def to(self, other=None, *ctx, **ctx_kwargs):
+    def to(self, other=None, *ctx, **ctx_kwargs):  # pragma: no cover
         return cast("ComputationalUnits", super().to(other, *ctx, **ctx_kwargs))
 
 
@@ -69,14 +69,6 @@ class Currency(CheckedDimensionality, dimensionality="[currency]"):
 
 class Requests(CheckedDimensionality, dimensionality="[requests]"):
     ...
-
-def first_char_of_unit(q: Quantity) -> str:
-    return str(cast(Quantity, q).units)[0]
-
-
-def magnitude_scaled_for_timeunit(q: RequestsPerTime, t: Time):
-    new_units = (ureg.req / t).units
-    return cast(Quantity, q).to(new_units).magnitude
 
 
 __all__ = [

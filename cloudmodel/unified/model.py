@@ -22,8 +22,8 @@ class App:
     name: str = "unnamed"
 
 
-@simplified_repr("name", "app", "time_unit")
-@dataclass(frozen=True, repr=False)
+@simplified_repr("description", "time_slot_size")
+@dataclass(frozen=True)
 class WorkloadSeries:
     """Workload as a sequence for different timeslots
 
@@ -48,6 +48,7 @@ class WorkloadSeries:
     #     self.time_slot_size.to("hour")
 
 
+@simplified_repr("value", "time_slot_size")
 @dataclass(frozen=True)
 class Workload:
     """Workload for a single timeslot (to be deprecated, redundant with WorkloadSeries)
@@ -69,6 +70,7 @@ class Workload:
     #     self.time_slot_size.to("hour")
 
 
+@simplified_repr("name", "max_vms", "max_cores")
 @dataclass(frozen=True)
 class LimitingSet:
     """LimitingSet restrictions.
@@ -121,6 +123,7 @@ class InstanceClass:
     #     object.__setattr__(self, "mem", self.mem.to("gibibytes"))
 
 
+@simplified_repr("name", "cores", "mem", "app", "limit")
 @dataclass(frozen=True)
 class ContainerClass:
     """ContainerClass characterization
@@ -211,24 +214,22 @@ class Problem:
     version: str = __version__
 
 
-def normalize_time_units(problem: Problem, units="minute") -> Problem:
+def workloadSeries_scale(
+    wl_series: WorkloadSeries, to: Time = Time("1 minute")
+) -> WorkloadSeries:
+    return WorkloadSeries(
+        wl_series.description,
+        wl_series.values,
+        wl_series.time_slot_size.to(to),
+        wl_series.intra_slot_distribution,
+    )
+
+
+def normalize_time_units(problem: Problem, units: str = "minute") -> Problem:
     sched_time_size = problem.sched_time_size.to(units)
     workloads = {}
     for app, wl_series in problem.workloads.items():
-        if wl_series.time_slot_size.magnitude != 0:
-            factor = (
-                wl_series.time_slot_size.magnitude
-                / wl_series.time_slot_size.to(units).magnitude
-            )
-        else:
-            factor = 0
-        values = tuple(wl * factor for wl in wl_series.values)
-        workloads[app] = WorkloadSeries(
-            wl_series.description,
-            values,
-            Time(units),
-            wl_series.intra_slot_distribution,
-        )
+        workloads[app] = workloadSeries_scale(wl_series, to=Time(units))
     ics = []
     for ic in problem.system.ics:
         ics.append(

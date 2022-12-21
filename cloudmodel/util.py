@@ -1,9 +1,16 @@
 """Internal utility functions"""
 
 
+from .unified.units import Quantity
+
+
 def repr_attr(obj, attr, show_field_names=True):
     if show_field_names:
-        return f"{attr}={repr(getattr(obj, attr))}"
+        value = getattr(obj, attr)
+        if isinstance(value, Quantity):
+            return f"{attr}='{str(value)}'"
+        else:
+            return f"{attr}={repr(value)}"
     else:
         return repr(getattr(obj, attr))
 
@@ -24,8 +31,8 @@ def simplified_repr(*fields, show_field_names=True):
     return decorator
 
 
-class MyTuple(tuple[float, ...]):
-    """Custom version of tuple which is represented as Tuple[n] in output, instead of (x,x,x,x,x....)"""
+# class MyTuple(tuple[float, ...]):
+#     """Custom version of tuple which is represented as Tuple[n] in output, instead of (x,x,x,x,x....)"""
 
-    def __repr__(self):
-        return f"Tuple[{len(self)}]"
+#     def __repr__(self):
+#         return f"Tuple[{len(self)}]"
