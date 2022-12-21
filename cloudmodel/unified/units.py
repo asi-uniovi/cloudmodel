@@ -1,4 +1,6 @@
-from pint import Quantity, DimensionalityError, UnitRegistry
+from pint import DimensionalityError, UnitRegistry
+from pint.facets.plain import PlainQuantity as Quantity
+from pint.testing import assert_allclose as assert_approx
 from typing import Union, cast
 
 # Define new units
@@ -14,22 +16,22 @@ ureg.define("rpm = req/minute")
 ureg.define("rph = req/hour")
 
 
-class CheckedDimensionality:
-    _dimensionality = "[]"
+class CheckedDimensionality(Quantity):
+    _my_dimensionality = "[]"
 
     def __init_subclass__(cls, dimensionality="[]", **kwargs):
         # This function is called when this class is subclassed
         # We store the dimensionality value in the subclass
         super().__init_subclass__(**kwargs)
-        cls._dimensionality = dimensionality
+        cls._my_dimensionality = dimensionality
 
-    def __new__(cls, v: Union[str, Quantity]) -> Quantity:
+    def __new__(cls, v: Union[str, Quantity]) -> "CheckedDimensionality":
         # This method will be inherited by the subclasses and used to
         # create obejects of that subclass. During the creation,
         # the correct dimensionality is checked
-        obj = ureg.Quantity(v)
-        if not obj.check(cls._dimensionality):
-            raise DimensionalityError(v, cls._dimensionality)
+        obj = ureg.Quantity(v)  # type: ignore
+        if not obj.check(cls._my_dimensionality):
+            raise DimensionalityError(v, cls._my_dimensionality)
         return obj
 
 
@@ -37,7 +39,28 @@ class CheckedDimensionality:
 # New dimension types appropriate for the cloud model
 # -----------------------------------------------------------------------------------
 class Time(CheckedDimensionality, dimensionality="[time]"):
-    ...
+    def to(self, other=None, *ctx, **ctx_kwargs):
+        return cast("Time", super().to(other, *ctx, **ctx_kwargs))
+
+
+class Storage(CheckedDimensionality, dimensionality="[]"):
+    def to(self, other=None, *ctx, **ctx_kwargs):
+        return cast("Storage", super().to(other, *ctx, **ctx_kwargs))
+
+
+class RequestsPerTime(CheckedDimensionality, dimensionality="[requests]/[time]"):
+    def to(self, other=None, *ctx, **ctx_kwargs):
+        return cast("RequestsPerTime", super().to(other, *ctx, **ctx_kwargs))
+
+
+class CurrencyPerTime(CheckedDimensionality, dimensionality="[currency]/[time]"):
+    def to(self, other=None, *ctx, **ctx_kwargs):
+        return cast("CurrencyPerTime", super().to(other, *ctx, **ctx_kwargs))
+
+
+class ComputationalUnits(CheckedDimensionality, dimensionality="[computation]"):
+    def to(self, other=None, *ctx, **ctx_kwargs):
+        return cast("ComputationalUnits", super().to(other, *ctx, **ctx_kwargs))
 
 
 class Currency(CheckedDimensionality, dimensionality="[currency]"):
@@ -47,24 +70,9 @@ class Currency(CheckedDimensionality, dimensionality="[currency]"):
 class Requests(CheckedDimensionality, dimensionality="[requests]"):
     ...
 
-
-class Storage(CheckedDimensionality, dimensionality="[]"):
-    ...
-
-
-class RequestsPerTime(CheckedDimensionality, dimensionality="[requests]/[time]"):
-    ...
-
-
-class CurrencyPerTime(CheckedDimensionality, dimensionality="[currency]/[time]"):
-    ...
-
-
-class ComputationalUnits(CheckedDimensionality, dimensionality="[computation]"):
-    ...
-
 def first_char_of_unit(q: Quantity) -> str:
     return str(cast(Quantity, q).units)[0]
+
 
 def magnitude_scaled_for_timeunit(q: RequestsPerTime, t: Time):
     new_units = (ureg.req / t).units
