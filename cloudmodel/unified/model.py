@@ -170,7 +170,6 @@ class System:
 
     Attributes:
         name:str: Name of the system modelled
-        apps:list[App]: List of applications to be deployed
         ics:list[InstanceClass]: List of instance classes (cloud infrastructure)
         ccs:list[ContainerClass]: List of containers classes (runtime for apps)
         perfs:dict[tuple[InstanceClass, ContainerClass|ProcessClass], float]:
@@ -210,6 +209,58 @@ class Problem:
     workloads: dict[App, WorkloadSeries]
     sched_time_size: Time
     version: str = __version__
+
+
+def normalize_time_units(problem: Problem, units="minute") -> Problem:
+    sched_time_size = problem.sched_time_size.to(units)
+    workloads = {}
+    for app, wl_series in problem.workloads.items():
+        if wl_series.time_slot_size.magnitude != 0:
+            factor = (
+                wl_series.time_slot_size.magnitude
+                / wl_series.time_slot_size.to(units).magnitude
+            )
+        else:
+            factor = 0
+        values = tuple(wl * factor for wl in wl_series.values)
+        workloads[app] = WorkloadSeries(
+            wl_series.description,
+            values,
+            Time(units),
+            wl_series.intra_slot_distribution,
+        )
+    ics = []
+    for ic in problem.system.ics:
+        ics.append(
+            InstanceClass(
+                name=ic.name,
+                price=ic.price.to(f"usd/{units}"),
+                cores=ic.cores,
+                mem=ic.mem,
+                limit=ic.limit,
+                limiting_sets=ic.limiting_sets,
+                is_reserved=ic.is_reserved,
+                is_private=ic.is_private,
+            )
+        )
+    perfs = {}
+    for k, v in problem.system.perfs.items():
+        ic, cc, app = k
+        ic_idx = problem.system.ics.index(ic)
+        perfs[ics[ic_idx], cc, app] = v.to(f"req/{units}")
+    sys = System(
+        name=problem.system.name,
+        ics=ics,
+        ccs=problem.system.ccs,
+        perfs=perfs,
+    )
+    return Problem(
+        name=problem.name,
+        system=sys,
+        workloads=workloads,
+        sched_time_size=sched_time_size,
+        version=problem.version,
+    )
 
 
 __all__ = [
