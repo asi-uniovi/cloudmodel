@@ -71,6 +71,8 @@ class Requests(CheckedDimensionality, dimensionality="[requests]"):
     ...
 
 
+UNLIMITED_TIME = Time("1 year")
+
 __all__ = [
     "Time",
     "Currency",
@@ -79,4 +81,5 @@ __all__ = [
     "RequestsPerTime",
     "Storage",
     "ComputationalUnits",
+    "UNLIMITED_TIME",
 ]

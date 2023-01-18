@@ -26,7 +26,7 @@ class TestPropertyTesting:
         """Check that all random problems created by the given strategy can be
         createwd without errors, and that the set of ics, ccs and apps inside
         the problem are consistent"""
-        apps_from_workloads = set(problem.workloads)
+        apps_from_workloads = set(app for app, region in problem.workloads)
         apps_from_performances = set(app for ic, cc, app in problem.system.perfs)
         apps_from_containers = set(c.app for c in problem.system.ccs if c is not None)
 
@@ -64,8 +64,10 @@ class TestPropertyTesting:
         for perf, perfn in zip(
             problem.system.perfs.values(), norm.system.perfs.values()
         ):
-            assert str(perfn.units) == f"req / {unit}"
-            assert_approx(perf, perfn)
+            assert str(perfn.value.units) == f"req / {unit}"
+            assert_approx(perf.value, perfn.value)
+            assert str(perfn.slo95.units) == unit
+            assert_approx(perf.slo95, perfn.slo95)
 
         # Workloads
         for wl, wln in zip(problem.workloads.values(), norm.workloads.values()):
@@ -154,6 +156,16 @@ class TestRepresentation:
         assert repr(a) == "App('foo')"
 
     @staticmethod
+    def test_repr_region():
+        a = model.Region("Europe")
+        assert repr(a) == "Region('Europe')"
+
+    @staticmethod
+    def test_repr_latency():
+        a = model.Latency(Time("10ms"))
+        assert repr(a) == "Latency(value='10 millisecond')"
+
+    @staticmethod
     def test_repr_wl_series():
         wls = model.WorkloadSeries(
             description="foo",
@@ -212,15 +224,23 @@ class TestRepresentation:
         )
 
     @staticmethod
+    def test_repr_perf():
+        perf = model.Performance(value=RequestsPerTime("1 req/s"), slo95=Time("10ms"))
+        assert (
+            repr(perf)
+            == "Performance(value='1.0 req / second', slo95='10 millisecond')"
+        )
+
+    @staticmethod
     def test_repr_sys():
-        sys = model.System(name="foo", ics=[], ccs=[], perfs={})
+        sys = model.System(name="foo", ics=[], ccs=[], perfs={}, latencies={})
         assert repr(sys) == "System(name='foo')"
 
     @staticmethod
     def test_repr_problem():
         problem = model.Problem(
             name="foo",
-            system=model.System("bar", [], [], {}),
+            system=model.System("bar", [], [], {}, {}),
             workloads={},
             sched_time_size=Time("15 min"),
         )

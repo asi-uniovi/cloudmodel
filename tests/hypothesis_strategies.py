@@ -1,6 +1,6 @@
-"""Define strategies for generating quantities with the appropriate units
-and to generate random problems which have a consistent set of apps, 
-ics and ccs, for use via hypothesis package in testing
+"""
+Define strategies for generating quantities with the appropriate units and to generate random
+problems which have a consistent set of apps, ics and ccs, for use via hypothesis package in testing
 """
 import itertools
 from cloudmodel.unified.units import (
@@ -15,9 +15,8 @@ from cloudmodel.unified.units import (
 from cloudmodel.unified import model
 from hypothesis import strategies as st
 
-# Function to create a string of the form "20.3 minute" for example
-# The numeric part is drawn randomly from floats, and the units part
-# is drawn randomly from the given list f allowable units
+# Function to create a string of the form "20.3 minute" for example The numeric part is drawn
+# randomly from floats, and the units part is drawn randomly from the given list f allowable units
 def str_float_quantity_strategy(
     allowable_units: list[str], min_value=0, max_value=1e30
 ):
@@ -34,8 +33,8 @@ def str_float_quantity_strategy(
 
 def model_unit_strategy(t: type):
     """Strategie to generate a random Quantity with the appropriate units depending
-    on the type received. For example, for Time type the quantity generated will
-    be of the subclass Time and the units will be time units, and so on."""
+    on the type received. For example, for Time type the quantity generated will be of the subclass
+    Time and the units will be time units, and so on."""
     if t == Time:
         return st.builds(
             Time, str_float_quantity_strategy(["hour", "minute", "second"])
@@ -74,6 +73,13 @@ st.register_type_strategy(Storage, model_unit_strategy)
 st.register_type_strategy(ComputationalUnits, model_unit_strategy)
 
 
+# Strategy for latencies
+@st.composite
+def model_latency_strategy(draw):
+    latency = draw(str_float_quantity_strategy(["ms"]))
+    return model.Latency(value=Time(latency))
+
+
 @st.composite
 def model_problem_strategy(draw):
     """Strategy to create a random problem which has consistent sets of (implicit) apps,
@@ -98,6 +104,9 @@ def model_problem_strategy(draw):
     # Create a random list of apps
     apps = draw(st.lists(st.from_type(model.App), min_size=1, max_size=4))
 
+    # Create a random list of regions
+    regions = draw(st.lists(st.from_type(model.Region), min_size=1, max_size=3))
+
     # Create a random list of container classes, but ensuring that the app
     # assigned to each cc is drawn from the previous list of apps
 
@@ -121,20 +130,34 @@ def model_problem_strategy(draw):
         model.ContainerClass(name=name, cores=cores, mem=mem, app=app, limit=limit)
         for (name, cores, mem, app, limit) in ccs_data
     ]
-    # The list may be empty (to allow malloovia models which do not use containers),
-    # but for this case `None` has to be used as containerclass key for the performance dict
+    # The list may be empty (to allow malloovia models which do not use containers), but for this
+    # case `None` has to be used as containerclass key for the performance dict
     if not ccs:
         ccs = [None]
 
-    # Create a random dict of performances. The keys of the dict are formed by all
-    # combinations of (ic, cc, app) from the previous list of ics, ccs and apps
-    # The values are drawn from strategie WorkloadSeries
+    # Create a random dict of performances. The keys of the dict are formed by all combinations of
+    # (ic, cc, app) from the previous list of ics, ccs and apps The values are drawn from strategie
+    # WorkloadSeries
     perfs = {}
     for ic, cc, app in itertools.product(ics, ccs, apps):
-        perfs[ic, cc, app] = draw(st.from_type(RequestsPerTime))
-    system = model.System(name=draw(st.text()), ics=ics, ccs=ccs, perfs=perfs)
+        perfs[ic, cc, app] = draw(st.from_type(model.Performance))
+
+    # Create a random dict for latencies. The keys of the dict are formed by all combinations of
+    # regions from the previous list of regions and the values are drawn from strategy Latency
+    lats = {}
+    for reg1, reg2 in itertools.product(regions, regions):
+        lats[reg1, reg2] = draw(model_latency_strategy())
+
+    # Create system
+    system = model.System(
+        name=draw(st.text()), ics=ics, ccs=ccs, perfs=perfs, latencies=lats
+    )
     workloads = draw(
-        st.dictionaries(st.sampled_from(apps), st.from_type(model.WorkloadSeries))
+        # sample a tuple of (app, region) from the list of apps and regions
+        st.dictionaries(
+            st.tuples(st.sampled_from(apps), st.sampled_from(regions)),
+            st.from_type(model.WorkloadSeries),
+        )
     )
 
     # Create the problem with all of the above parameters
