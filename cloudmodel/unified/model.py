@@ -124,7 +124,7 @@ class InstanceClass:
     cores: ComputationalUnits
     mem: Storage
     limit: int
-    limiting_sets: Tuple[LimitingSet]
+    limiting_sets: Tuple[LimitingSet, ...]
     is_reserved: bool = False
     is_private: bool = False
     region: Region = Region("__world__")
@@ -157,7 +157,7 @@ class ContainerClass:
       - cores:ComputationalUnits: number of millicores available in this container
       - mem:Storage: GiB available in this container
       - app:App: application (container image) run in this container
-      - limit:int: cpu limit enforced by the container orchestrator
+      - limit:int: maximum number of containers of this class
     """
 
     name: str
@@ -224,6 +224,8 @@ class System:
       - perfs:dict[Tuple[InstanceClass, ContainerClass | ProcessClass | None, App], Performance]:
             performance of each application running on each instance class or container class
       - latencies:dict[Tuple[Region, Region], Latency]: latency between regions
+      - default_latency:Latency: default latency between regions (0 by default) to be used when a
+        specific value is not provided for a pair of regions
     """
 
     name: str
@@ -234,6 +236,7 @@ class System:
         Performance,
     ]
     latencies: dict[Tuple[Region, Region], Latency]
+    default_latency: Latency = Latency(Time("0 s"))
 
     # def __post_init__(self):
     #     """Checks dimensions are valid and store them in the standard units."""
