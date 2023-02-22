@@ -6,8 +6,8 @@ from typing import Union, cast
 # Define new units
 ureg = UnitRegistry()
 ureg.define("usd = [currency]")
-ureg.define("cores = [computation] = 2*vcores")
-ureg.define("millicores = 0.001 cores")
+ureg.define("core = [computation] = 2*vcores")
+ureg.define("millicore = 0.001 cores")
 ureg.define("req = [requests]")
 # ureg.define("bit = [storage]")
 ureg.define("[performance] = [requests]/[time]")
