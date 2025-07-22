@@ -191,7 +191,7 @@ class TestRepresentation:
         ls = model.LimitingSet(
             name="foo", max_vms=0, max_cores=ComputationalUnits("200 cores")
         )
-        assert repr(ls) == "LimitingSet(name='foo', max_vms=0, max_cores='200 cores')"
+        assert repr(ls) == "LimitingSet(name='foo', max_vms=0, max_cores='200 core')"
 
     @staticmethod
     def test_repr_ic():
@@ -206,7 +206,7 @@ class TestRepresentation:
         # name", "price", "cores", "mem"
         assert (
             repr(ic) == "InstanceClass(name='foo', price='0.5 usd / hour', "
-            "cores='2 cores', mem='4 gibibyte')"
+            "cores='2 core', mem='4 gibibyte')"
         )
 
     @staticmethod
@@ -219,7 +219,7 @@ class TestRepresentation:
             limit=0,
         )
         assert (
-            repr(cc) == "ContainerClass(name='foo', cores='1000 millicores', "
+            repr(cc) == "ContainerClass(name='foo', cores='1000 millicore', "
             "mem='0.5 gibibyte', app=App('bar'), limit=0)"
         )
 
