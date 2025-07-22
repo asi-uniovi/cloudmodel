@@ -1,25 +1,20 @@
-[tool.poetry]
+[project]
 name = "cloudmodel"
 version = "0.1.0"
 description = "A dataclass model for cloud infrastructure and applications"
-authors = ["Jose Luis Diaz <jldiaz@uniovi.es>"]
-license = "MIT"
+authors = [
+    {name = "Jose Luis Diaz", email = "jldiaz@uniovi.es"}
+]
+license = {text = "MIT"}
 readme = "README.md"
-
-[tool.poetry.dependencies]
-python = "^3.10"
-pint = "0.20.1"
-
-[tool.poetry.group.dev.dependencies]
-pytest = "^7.2.0"
-black = "^22.10.0"
-mypy = "^0.991"
-hypothesis = "^6.61.0"
-pytest-cov = "^4.0.0"
+requires-python = ">=3.10"
+dependencies = [
+    "pint>=0.20.1",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 
 [tool.pytest.ini_options]
@@ -27,4 +22,13 @@ markers = [
     "units: Testing the unit system",
     "property_testing: Slow tests that use hypothesis",
     "repr: Testing string representation of class models"
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+    "black>=22.10.0",
+    "mypy>=0.991",
+    "hypothesis>=6.61.0",
+    "pytest-cov>=4.0.0",
 ]
